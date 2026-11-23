@@ -22,6 +22,7 @@ sys.path.insert(0, str(ROOT))
 
 from engine.hwpx_writer import DEFAULT_TEMPLATE, build_hwpx  # noqa: E402
 from engine.md_parser import parse_markdown  # noqa: E402
+from engine.hwpx_merge import COVER_TEMPLATE, merge_hwpx, sort_key, team_info  # noqa: E402
 
 STATIC = Path(__file__).resolve().parent / "static"
 MAX_MD_BYTES = 1_000_000
@@ -113,9 +114,82 @@ def build(req: BuildRequest):
     )
 
 
+# Vercel 함수는 요청 본문이 4.5MB 를 넘으면 받지 못한다(base64 로 늘어나는 것까지 고려).
+MAX_MERGE_BYTES = 3_200_000
+
+
+class UploadedFile(BaseModel):
+    name: str = ""
+    data: str  # base64
+
+
+class InspectRequest(BaseModel):
+    files: list[UploadedFile]
+
+
+class MergeRequest(BaseModel):
+    files: list[UploadedFile]
+    cover: bool = True
+    date: str = ""
+    place: str = ""
+    filename: str = "주간회의(교육혁신처 전체).hwpx"
+
+
+def _decode_files(files: list[UploadedFile]) -> list[bytes]:
+    out, total = [], 0
+    for f in files:
+        try:
+            data = base64.b64decode(f.data, validate=True)
+        except ValueError:
+            raise HTTPException(422, f"{f.name}: 파일을 읽지 못했어요.")
+        total += len(data)
+        if total > MAX_MERGE_BYTES:
+            raise HTTPException(413, "파일 크기 합계가 3MB를 넘어요. 그림이 큰 파일은 한글에서 그림 크기를 줄여 저장해 주세요.")
+        out.append(data)
+    return out
+
+
+@app.post("/api/inspect")
+def inspect(req: InspectRequest):
+    """올린 팀 파일마다 부서·팀 이름과 안건 수, 기본 순서를 알려 준다."""
+    result = []
+    for f, data in zip(req.files, _decode_files(req.files)):
+        try:
+            info = team_info(data)
+        except Exception:  # noqa: BLE001 - 깨진 파일은 목록에서 알려 준다
+            result.append({"name": f.name, "ok": False, "error": "hwpx 파일이 아니거나 손상됐어요."})
+            continue
+        result.append({"name": f.name, "ok": True, "dept": info["dept"], "team": info["team"],
+                       "agendas": info["agendas"], "order": sort_key(info)})
+    return {"files": result}
+
+
+@app.post("/api/merge")
+def merge(req: MergeRequest):
+    if not req.files:
+        raise HTTPException(422, "합칠 파일이 없어요.")
+    blobs = _decode_files(req.files)
+    try:
+        cover = {"date": req.date, "place": req.place} if req.cover else None
+        blob = merge_hwpx(blobs, cover, COVER_TEMPLATE)
+    except (KeyError, ValueError, IndexError, AttributeError) as e:
+        raise HTTPException(422, f"합치는 중 문제가 생겼어요: {e}")
+    fname = _safe_filename(req.filename)
+    return Response(
+        blob,
+        media_type="application/hwp+zip",
+        headers={"Content-Disposition": f"attachment; filename=\"weekly-all.hwpx\"; filename*=UTF-8''{quote(fname)}"},
+    )
+
+
 @app.get("/")
 def index():
     return FileResponse(STATIC / "index.html")
+
+
+@app.get("/merge")
+def merge_page():
+    return FileResponse(STATIC / "merge.html")
 
 
 app.mount("/static", StaticFiles(directory=STATIC), name="static")
