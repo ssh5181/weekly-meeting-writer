@@ -1,0 +1,7 @@
+"""Vercel 서버리스 진입점. 모든 요청을 FastAPI 앱으로 넘긴다."""
+import sys
+from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from app.main import app  # noqa: E402,F401
