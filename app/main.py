@@ -80,7 +80,12 @@ def defaults():
 def parse(req: ParseRequest):
     data = parse_markdown(req.markdown)
     if not data["agendas"]:
-        raise HTTPException(422, "안건을 찾지 못했어요. '제목: ① [구분] 사업명(담당자: 이름)' 또는 '# ① [구분] 사업명' 형식의 제목이 있는지 확인해 주세요.")
+        first = next((l.strip() for l in req.markdown.splitlines() if l.strip()), "")
+        raise HTTPException(
+            422,
+            "안건을 찾지 못했어요. '① [구분] 사업명(담당자: 이름)' 형식의 안건 제목이 있는지 확인해 주세요."
+            f" (읽은 글자 수 {len(req.markdown):,}자, 첫 줄: \"{first[:40]}\")",
+        )
     return data
 
 
