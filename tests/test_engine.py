@@ -81,3 +81,19 @@ def test_two_level_dash_list_becomes_headings():
     assert main[3] == ("bullet", "입장 코드 인증")
     assert secs[2]["items"][0]["type"] == "bullet"  # 1단 목록은 그대로
     assert all("lvl" not in i for s in secs for i in s["items"])
+
+
+def test_kpi_uses_thick_arrow():
+    """성과지표 줄은 '※' 대신 굵은 화살표(➡)로 시작하고, 각주 표시(*)는 따로 강조한다."""
+    import io
+    import re
+    import zipfile
+    from engine.hwpx_writer import build_hwpx
+    from engine.md_parser import parse_markdown
+    md = ("### ① \\[육성\\] 예시 사업(담당자: 홍길동)\n○ **목적**: 예시\n"
+          "➡ **\\[국립대학육성사업 성과지표 목표\\]** 교과목 개발 건수 20개\\*/18개\n")
+    sec = zipfile.ZipFile(io.BytesIO(build_hwpx(parse_markdown(md)))).read("Contents/section0.xml").decode()
+    p = re.search(r"<hp:p\b[^>]*>(?:(?!</hp:p>).)*성과지표(?:(?!</hp:p>).)*</hp:p>", sec, re.S).group(0)
+    assert "<hp:t> ➡<hp:fwSpace/><hp:fwSpace/></hp:t>" in p
+    assert "※" not in p
+    assert re.search(r"<hp:t>\*</hp:t>", p)

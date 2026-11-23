@@ -103,8 +103,8 @@ kbd { border: 1px solid var(--line); border-radius: 3px; padding: 0 4px; font-si
 .line.bullet .txt::before { content: "- "; }
 .line.note { padding-left: 2.2em; text-indent: -1em; font-size: 12pt; }
 .line.text { padding-left: 2.4em; }
-.kpi { color: var(--red); font-size: 12pt; margin: 6px 0 0 1em; }
-.kpi .txt::before { content: "※ "; }
+.kpi { color: #000; font-weight: 700; font-size: 12pt; margin: 6px 0 0 1em; }
+.kpi .txt::before { content: "➡\00a0\00a0"; }
 .txt { outline: none; display: inline; text-indent: 0; padding: 0 1px; }
 .txt:empty { display: inline-block; min-width: 3em; }
 td .txt, th .txt { display: block; }

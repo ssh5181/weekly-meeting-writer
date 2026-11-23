@@ -109,6 +109,16 @@ def _rich_runs(text: str, cp: str, bold_cp: str) -> str:
     return "".join(out) or _run(cp, "")
 
 
+def _kpi_runs(text: str, sid: dict) -> str:
+    """성과지표 줄: ' ➡' + 전각 공백 두 칸 뒤에 굵은 글씨, 각주 표시(*)는 파란 글씨(최신 서식 기준)."""
+    arrow = f'<hp:run charPrIDRef="{sid["cp_kpi"]}"><hp:t> ➡<hp:fwSpace/><hp:fwSpace/></hp:t></hp:run>'
+    runs = []
+    for i, part in enumerate(re.split(r"(\*+)", text.replace("**", ""))):
+        if part:
+            runs.append(_run(sid["cp_kpi_mark"] if i % 2 else sid["cp_kpi"], (" " + part) if i == 0 else part))
+    return arrow + "".join(runs)
+
+
 def _para(pp: str, style: str, runs: str) -> str:
     return (f'<hp:p id="2147483648" paraPrIDRef="{pp}" styleIDRef="{style}" '
             f'pageBreak="0" columnBreak="0" merged="0">{runs}</hp:p>')
@@ -228,11 +238,9 @@ def build_body(data: dict, sid: dict) -> tuple[str, list[str]]:
                 if it["type"] != "table":
                     plain.append(it.get("text", ""))
         if a.get("kpi"):
-            kpi = a["kpi"].strip()
-            if not kpi.startswith("※"):
-                kpi = "※ " + kpi
-            out.append(_para(sid["pp_note"], "0", _rich_runs(kpi, sid["cp_kpi"], sid["cp_kpi"])))
-            plain.append(kpi)
+            kpi = re.sub(r"^[※➡→⇒▶☞]\s*", "", a["kpi"].strip())
+            out.append(_para(sid["pp_kpi"], "0", _kpi_runs(kpi, sid)))
+            plain.append("➡ " + kpi)
         for note in a.get("kpi_notes") or []:
             if note.strip():
                 out.append(_para(sid["pp_note"], "0", _rich_runs(note.strip(), sid["cp_note"], sid["cp_note"])))

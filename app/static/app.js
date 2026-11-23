@@ -107,7 +107,7 @@ function render() {
       </div>
       <div class="agenda-title"><span class="num">${num}</span> <span class="cat">[${edit(`a.${ai}.category`, a.category, "구분")}]</span> ${edit(`a.${ai}.title`, a.title, "사업명 및 추진 내용")}<span class="agenda-owner">(담당자: ${edit(`a.${ai}.owner`, a.owner, "이름")})</span></div>
       ${secs}
-      <div class="kpi">${edit(`a.${ai}.kpi`, (a.kpi || "").replace(/^※\s*/, ""), "[성과지표 목표] 비워 두면 문서에 넣지 않아요")}</div>
+      <div class="kpi">${edit(`a.${ai}.kpi`, (a.kpi || "").replace(/^[※➡]\s*/, ""), "[성과지표 목표] 비워 두면 문서에 넣지 않아요")}</div>
       ${(a.kpi_notes || []).map((n, j) => `<div class="line note kpi-note">${edit(`a.${ai}.kpi_notes.${j}`, n, "성과지표 각주")}</div>`).join("")}
     </div>`;
   }).join("");
