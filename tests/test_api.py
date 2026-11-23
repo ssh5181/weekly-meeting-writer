@@ -30,7 +30,9 @@ def test_parse_and_build():
 
 
 def test_parse_rejects_empty():
-    assert client.post("/api/parse", json={"markdown": "안건 없는 글"}).status_code == 422
+    r = client.post("/api/parse", json={"markdown": "안건 없는 글"})
+    assert r.status_code == 422
+    assert "첫 줄: \"안건 없는 글\"" in r.json()["detail"]
     assert client.post("/api/build", json={"data": {"agendas": []}}).status_code == 422
 
 

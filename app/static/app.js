@@ -234,7 +234,12 @@ function decodeText(buf) {
   try {
     return new TextDecoder("utf-8", { fatal: true }).decode(buf).replace(/^\uFEFF/, "");
   } catch {
-    return new TextDecoder("euc-kr").decode(buf);
+    // 몇 바이트만 깨진 UTF-8 파일도 있으므로, 두 방식으로 읽어 보고 한글이 더 자연스러운 쪽을 고른다.
+    const utf8 = new TextDecoder("utf-8").decode(buf).replace(/^\uFEFF/, "");
+    const euckr = new TextDecoder("euc-kr").decode(buf);
+    const score = (t) => (t.match(/[가-힣]/g) || []).length - 5 * (t.match(/\uFFFD/g) || []).length
+      + 20 * (t.match(/[①-⑳○]/g) || []).length;
+    return score(utf8) >= score(euckr) ? utf8 : euckr;
   }
 }
 function readFile(file) {

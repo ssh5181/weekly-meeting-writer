@@ -68,3 +68,23 @@ def test_build_bold_total_rows_and_kpi_note():
     assert "**" not in sec
     assert ">합계<" in sec and ">총계<" in sec
     assert "인증 4개 = 20개" in sec
+
+
+def test_plain_text_copied_from_rendered_view():
+    """MD 미리보기 화면에서 복사해 붙여 넣은 초안(# 없음, 표는 탭 구분)."""
+    md = (ROOT / "tests" / "fixtures" / "pasted_plain.txt").read_text(encoding="utf-8")
+    data = parse_markdown(md)
+    ags = data["agendas"]
+    assert [a["number"] for a in ags] == [1, 2]
+    assert ags[1]["title"].startswith("예시 기초학문")
+    main = ags[0]["sections"][1]
+    heads = [it["text"] for it in main["items"] if it["type"] == "heading"]
+    assert heads == ["가. 결과보고서 자동 생성기 구축 및 운영", "나. 단과대학별 예산 재배정 수정 추진"]
+    tbl = next(it for it in main["items"] if it["type"] == "table")
+    assert tbl["header"] == ["연번", "단과대학", "총 배정액(원)"]
+    assert tbl["rows"][-1][0] == "합계"
+    assert ags[0]["kpi"].startswith("[국립대학육성사업 성과지표 목표]")
+    assert ags[0]["kpi_notes"]
+    t2 = next(it for it in ags[1]["sections"][1]["items"] if it["type"] == "table")
+    assert t2["rows"][-1] == ["소계", "", "2,000"]
+    assert not any("dot" in it for a in ags for s in a["sections"] for it in s["items"])
