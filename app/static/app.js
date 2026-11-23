@@ -33,7 +33,7 @@ function edit(path, text, ph = "", tag = "span", extraClass = "") {
   return `<${tag} class="txt ${extraClass}" contenteditable="true" spellcheck="false" data-path="${path}" data-ph="${esc(ph)}">${mdToHtml(text)}</${tag}>`;
 }
 const toolsHtml = () => $("#tpl-item-tools").innerHTML;
-const isTotalRow = (row) => ["합계", "계", "총계", "소계"].includes((row[0] || "").replace(/\s/g, ""));
+const isTotalRow = (row) => ["합계", "계", "총계", "소계"].includes((row[0] || "").replace(/\*\*|\s/g, ""));
 
 /* ---------- 경로로 상태 읽고 쓰기 ---------- */
 function resolve(path) {
@@ -52,6 +52,7 @@ function resolve(path) {
     }
     return { obj: sec, key: p[4] };
   }
+  if (p[2] === "kpi_notes") return { obj: ag.kpi_notes, key: +p[3] };
   return { obj: ag, key: p[2] };
 }
 
@@ -107,6 +108,7 @@ function render() {
       <div class="agenda-title"><span class="num">${num}</span> <span class="cat">[${edit(`a.${ai}.category`, a.category, "구분")}]</span> ${edit(`a.${ai}.title`, a.title, "사업명 및 추진 내용")}<span class="agenda-owner">(담당자: ${edit(`a.${ai}.owner`, a.owner, "이름")})</span></div>
       ${secs}
       <div class="kpi">${edit(`a.${ai}.kpi`, (a.kpi || "").replace(/^※\s*/, ""), "[성과지표 목표] 비워 두면 문서에 넣지 않아요")}</div>
+      ${(a.kpi_notes || []).map((n, j) => `<div class="line note kpi-note">${edit(`a.${ai}.kpi_notes.${j}`, n, "성과지표 각주")}</div>`).join("")}
     </div>`;
   }).join("");
   $("#empty").hidden = true;
@@ -224,12 +226,23 @@ async function loadMarkdown(md, source) {
     setStatus(err.message, "error");
   }
 }
+// UTF-8 로 읽어 보고, 깨지면 EUC-KR(CP949, 한글 Windows 기본)로 다시 읽는다.
+function decodeText(buf) {
+  const b = new Uint8Array(buf.slice(0, 2));
+  if (b[0] === 0xff && b[1] === 0xfe) return new TextDecoder("utf-16le").decode(buf).replace(/^\uFEFF/, "");
+  if (b[0] === 0xfe && b[1] === 0xff) return new TextDecoder("utf-16be").decode(buf).replace(/^\uFEFF/, "");
+  try {
+    return new TextDecoder("utf-8", { fatal: true }).decode(buf).replace(/^\uFEFF/, "");
+  } catch {
+    return new TextDecoder("euc-kr").decode(buf);
+  }
+}
 function readFile(file) {
   if (!file) return;
   if (file.size > 1_000_000) return setStatus("파일이 너무 커요 (1MB 이하).", "error");
   const fr = new FileReader();
-  fr.onload = () => loadMarkdown(String(fr.result), file.name);
-  fr.readAsText(file, "utf-8");
+  fr.onload = () => loadMarkdown(decodeText(fr.result), file.name);
+  fr.readAsArrayBuffer(file);
 }
 const dz = $("#dropzone");
 $("#file").addEventListener("change", (e) => readFile(e.target.files[0]));

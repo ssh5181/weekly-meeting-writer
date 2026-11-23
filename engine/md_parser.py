@@ -40,7 +40,7 @@ def _strip_md_escapes(s: str) -> str:
 
 
 def _classify_label(label: str):
-    label = label.strip().rstrip(":").strip()
+    label = label.replace("**", "").strip().rstrip(":").strip()
     for kind, canon, rx in SECTION_KEYS:
         if rx.search(label.replace(" ", "")) or rx.search(label):
             return kind, canon
@@ -108,11 +108,33 @@ def _new_agenda(title_raw: str) -> dict:
     a = parse_title(title_raw)
     a["sections"] = []
     a["kpi"] = ""
+    a["kpi_notes"] = []
     return a
 
 
+def _clean_kpi(text: str) -> str:
+    return re.sub(r"\s+", " ", text.replace("**", "")).strip()
+
+
+def _number_headings(agendas: list[dict]) -> None:
+    """'* **소제목**' 처럼 번호 없이 들어온 중항목에 가. 나. 다. 를 붙인다."""
+    for a in agendas:
+        for sec in a["sections"]:
+            n = 0
+            for it in sec["items"]:
+                if it["type"] != "heading":
+                    continue
+                m = re.match(rf"^([{KOREAN_ORDINALS}])\.\s*", it["text"])
+                if m:
+                    n = KOREAN_ORDINALS.index(m.group(1)) + 1
+                    continue
+                if n < len(KOREAN_ORDINALS):
+                    it["text"] = f"{KOREAN_ORDINALS[n]}. {it['text']}"
+                n += 1
+
+
 def parse_markdown(md: str) -> dict:
-    md = md.replace("\r\n", "\n").replace("\r", "\n")
+    md = md.lstrip("\ufeff").replace("\r\n", "\n").replace("\r", "\n")
     raw_lines = [_strip_md_escapes(l.rstrip()) for l in md.split("\n")]
 
     agendas: list[dict] = []
@@ -120,6 +142,7 @@ def parse_markdown(md: str) -> dict:
     sec: dict | None = None
     pending_agenda_heading = False  # "## [안건 1]" 다음 줄에 제목이 오는 경우
     in_kpi_section = False
+    after_kpi = False  # 성과지표 바로 아래의 각주(* ..., `...`)를 성과지표에 붙이기 위함
 
     def ensure_agenda():
         nonlocal cur
@@ -137,25 +160,46 @@ def parse_markdown(md: str) -> dict:
         return sec
 
     def open_section(kind, label, text=""):
-        nonlocal sec, in_kpi_section
+        nonlocal sec, in_kpi_section, after_kpi
         ensure_agenda()
         in_kpi_section = False
+        after_kpi = False
         if kind == "kpi":
             in_kpi_section = True
             if text:
-                cur["kpi"] = (cur["kpi"] + " " + text).strip()
+                cur["kpi"] = _clean_kpi(cur["kpi"] + " " + text)
             sec = None
             return
         sec = {"kind": kind or "other", "label": label, "text": text.strip(), "items": []}
         cur["sections"].append(sec)
 
     def add_item(item):
-        nonlocal in_kpi_section
+        nonlocal in_kpi_section, after_kpi
         if in_kpi_section and cur is not None:
             if item["type"] != "table":
-                cur["kpi"] = (cur["kpi"] + " " + item["text"]).strip()
+                cur["kpi"] = _clean_kpi(cur["kpi"] + " " + item["text"])
                 return
+        if after_kpi and cur is not None and item["type"] == "note":
+            cur["kpi_notes"].append(item["text"])
+            return
+        after_kpi = False
         ensure_section()["items"].append(item)
+
+    def set_kpi(text):
+        nonlocal after_kpi
+        ensure_agenda()
+        cur["kpi"] = _clean_kpi(cur["kpi"] + " " + text)
+        after_kpi = True
+
+    def new_agenda(text):
+        nonlocal cur, sec, in_kpi_section, after_kpi, pending_agenda_heading, started
+        started = True
+        cur = _new_agenda(text)
+        agendas.append(cur)
+        sec = None
+        in_kpi_section = False
+        after_kpi = False
+        pending_agenda_heading = False
 
     i = 0
     started = False
@@ -164,6 +208,15 @@ def parse_markdown(md: str) -> dict:
         s = line.strip()
         i += 1
         if not s or re.fullmatch(r"-{3,}|\*{3,}|_{3,}", s):
+            continue
+        indent = len(line) - len(line.lstrip())
+        # 줄 전체가 `...` 인 경우(각주 등)와 줄 안의 `코드` 표시는 글자만 남긴다
+        code_line = len(s) > 1 and s[0] == "`" and s[-1] == "`"
+        s = re.sub(r"`+", "", s).strip()
+        if not s:
+            continue
+        if code_line and started:
+            add_item({"type": "note", "text": s})
             continue
 
         # 표
@@ -193,30 +246,16 @@ def parse_markdown(md: str) -> dict:
                 # 문서 앞부분(지시문 등)은 무시
                 continue
             # 새 안건 제목
-            started = True
-            cur = _new_agenda(text)
-            agendas.append(cur)
-            sec = None
-            in_kpi_section = False
-            pending_agenda_heading = False
+            new_agenda(text)
             continue
 
         # 제목: ...
         if re.match(r"^(제목|안건명)\s*[:：]", s) or (pending_agenda_heading and s[:1] in CIRCLED + "["):
-            started = True
-            cur = _new_agenda(s)
-            agendas.append(cur)
-            sec = None
-            in_kpi_section = False
-            pending_agenda_heading = False
+            new_agenda(s)
             continue
         if not started:
             if s[:1] in CIRCLED and "[" in s:
-                started = True
-                cur = _new_agenda(s)
-                agendas.append(cur)
-                sec = None
-                continue
+                new_agenda(s)
             continue
 
         # ○ 대항목
@@ -227,10 +266,9 @@ def parse_markdown(md: str) -> dict:
                 label, rest = re.split(r"[:：]", body, maxsplit=1)
             else:
                 label, rest = body, ""
-            kind, canon = _classify_label(label)
-            if kind is None:
-                canon = label.strip()
-            open_section(kind, canon, rest.strip())
+            kind, _canon = _classify_label(label)
+            # 초안에 적힌 항목명(예: '추진일정')을 그대로 쓰고, 종류만 판별해 서식을 고른다
+            open_section(kind, label.replace("**", "").strip(), rest.strip())
             continue
 
         # ※ 성과지표 / 참고
@@ -238,11 +276,15 @@ def parse_markdown(md: str) -> dict:
         if m:
             body = m.group(1).strip()
             if "성과지표" in body or in_kpi_section:
-                ensure_agenda()
-                cur["kpi"] = (cur["kpi"] + " " + body).strip()
-                sec = None if in_kpi_section else sec
+                set_kpi(body)
                 continue
             add_item({"type": "note", "text": "※ " + body})
+            continue
+
+        # ➡ [성과지표 목표] ... 처럼 화살표로 시작하는 성과지표
+        m = re.match(r"^[➡→⇒▶☞]\s*(.*)$", s)
+        if m and "성과지표" in m.group(1):
+            set_kpi(m.group(1))
             continue
 
         # 가. 나. 중항목
@@ -251,10 +293,19 @@ def parse_markdown(md: str) -> dict:
             add_item({"type": "heading", "text": f"{m.group(1)}. {m.group(2).strip()}"})
             continue
 
-        # '* ' 로 시작하는 줄은 참고(주석) 문구
+        # '* ' 로 시작하는 줄
+        #  - 들여쓴 '* 내용'      → 참고(주석) 문구
+        #  - '* **소제목** ...'   → 중항목(가. 나. 자동 번호)
+        #  - 들여쓰기 없는 '* 내용' → 세부항목
         m = re.match(r"^[*＊]\s+(.*)$", s)
         if m:
-            add_item({"type": "note", "text": "* " + m.group(1).strip()})
+            body = m.group(1).strip()
+            if indent > 0:
+                add_item({"type": "note", "text": "* " + body})
+            elif re.match(r"^\*\*[^*].*?\*\*", body):
+                add_item({"type": "heading", "text": body.replace("**", "").strip()})
+            else:
+                add_item({"type": "bullet", "text": body})
             continue
 
         # - 세부항목
@@ -266,6 +317,7 @@ def parse_markdown(md: str) -> dict:
         # 그 외 일반 문장
         add_item({"type": "text", "text": s})
 
+    _number_headings(agendas)
     # 번호 채우기
     for idx, a in enumerate(agendas, 1):
         if not a.get("number"):
