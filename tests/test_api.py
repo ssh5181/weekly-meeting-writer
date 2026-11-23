@@ -44,3 +44,15 @@ def test_shared_password(monkeypatch):
     ok = client.get("/", auth=("team", "팀비번"))
     assert ok.status_code == 200
     assert client.get("/", auth=("team", "wrong")).status_code == 401
+
+
+def test_no_default_leader_name():
+    """팀장 이름은 기본값으로 채우지 않고, 비워 두면 문서에도 예시 이름이 남지 않는다."""
+    assert client.get("/api/defaults").json()["leader"] == ""
+    import io
+    import zipfile
+    from engine.md_parser import parse_markdown
+    data = parse_markdown((ROOT / "samples" / "sample_draft.md").read_text(encoding="utf-8"))
+    r = client.post("/api/build", json={"data": data, "meta": {"dept": "교육과정과", "team": "전공교육팀", "leader": ""}})
+    sec = zipfile.ZipFile(io.BytesIO(r.content)).read("Contents/section0.xml").decode()
+    assert "<hp:t>(팀장: )</hp:t>" in sec
