@@ -36,6 +36,11 @@ button.ghost { background: transparent; border-style: dashed; color: var(--accen
   padding: 10px 20px; background: var(--panel); border-bottom: 1px solid var(--line);
 }
 .topbar h1 { font-size: 18px; margin: 0; }
+.brand { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+.tabs { display: flex; gap: 4px; }
+.tabs a { padding: 5px 12px; border-radius: 6px; color: var(--muted); text-decoration: none; font-size: 14px; }
+.tabs a:hover { background: var(--hover); color: var(--ink); }
+.tabs a[aria-current="page"] { background: var(--hover); color: var(--accent); font-weight: 600; }
 .topbar-actions { display: flex; gap: 8px; align-items: center; }
 .topbar-actions input { width: 280px; padding: 6px 10px; border: 1px solid var(--line); border-radius: 6px; }
 
@@ -122,6 +127,22 @@ td .txt, th .txt { display: block; }
 .sec-add { margin: 2px 0 0 2.4em; }
 .sec-add select { font-size: 12px; padding: 1px 4px; color: var(--muted); border: 1px dashed var(--line); border-radius: 4px; background: transparent; }
 .add-agenda { margin-top: 24px; text-align: center; font-family: sans-serif; }
+
+/* 합본 만들기 */
+.check { display: flex; gap: 8px; align-items: center; font-size: 14px; margin-bottom: 10px; }
+.merge-list { background: var(--panel); border: 1px solid var(--line); border-radius: 10px; padding: 16px; }
+.merge-list h2 { font-size: 15px; margin: 0 0 4px; }
+.merge-list .hint { font-size: 13px; color: var(--muted); margin: 0 0 12px; }
+.files { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.file-row { display: grid; grid-template-columns: 36px 1fr auto; gap: 12px; align-items: center; border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; }
+.file-row.bad { border-color: var(--danger); }
+.file-row .no { font-weight: 700; color: var(--accent); text-align: center; font-size: 18px; }
+.file-row .team { font-weight: 600; }
+.file-row .meta { font-size: 13px; color: var(--muted); overflow-wrap: anywhere; }
+.file-row .acts { display: flex; gap: 4px; }
+.file-row .acts button { padding: 2px 8px; font-size: 13px; }
+.file-row .acts button[data-act="del"] { color: var(--danger); }
+.dept-sep { font-size: 13px; color: var(--muted); margin: 6px 0 0 4px; }
 
 @media (max-width: 980px) {
   .layout { grid-template-columns: 1fr; padding: 12px; }

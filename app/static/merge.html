@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>주간회의 합본 만들기</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand"><h1>주간회의 작성기</h1><nav class="tabs"><a href="/">개별 작성</a><a href="/merge" aria-current="page">합본 만들기</a></nav></div>
+  <div class="topbar-actions">
+    <input id="filename" type="text" aria-label="파일 이름" placeholder="파일 이름">
+    <button id="btn-merge" class="primary" disabled>합본 hwpx 다운로드</button>
+  </div>
+</header>
+
+<main class="layout">
+  <aside class="panel">
+    <section>
+      <h2>1. 팀별 파일 올리기</h2>
+      <label id="dropzone" class="dropzone" tabindex="0">
+        <input id="files" type="file" accept=".hwpx" multiple hidden>
+        <strong>팀별 hwpx 파일을 끌어다 놓거나 클릭해서 선택</strong>
+        <span>여러 개를 한꺼번에 올려도 돼요</span>
+      </label>
+      <p id="status" class="status" role="status"></p>
+    </section>
+
+    <section>
+      <h2>2. 표지</h2>
+      <label class="check"><input id="cover-on" type="checkbox" checked> 표지 넣기</label>
+      <label class="field">일시 <input id="cover-date" type="text"></label>
+      <label class="field">장소 <input id="cover-place" type="text" value="교육혁신처 회의실(402호)"></label>
+    </section>
+
+    <section class="help">
+      <h2>이렇게 합쳐져요</h2>
+      <ul>
+        <li>표지 다음에 오른쪽 순서대로 팀 자료가 이어지고, 팀마다 새 쪽에서 시작해요.</li>
+        <li>같은 부서의 팀이 이어지면 부서 제목(1 교육과정과)은 한 번만 넣어요.</li>
+        <li>각 팀 파일의 글자 모양, 표, 그림은 그대로 옮겨요.</li>
+      </ul>
+    </section>
+  </aside>
+
+  <section class="preview-wrap">
+    <div class="merge-list">
+      <h2>합칠 순서</h2>
+      <p class="hint">전공교육팀 → 교양교육팀 → 교수학습팀 → IC-PBL센터 → 공동교육센터 순으로 자동 정렬해요. ▲▼로 바꿀 수 있어요.</p>
+      <div id="empty" class="empty">팀별 파일을 올리면 여기에 순서대로 나타나요.</div>
+      <ol id="list" class="files"></ol>
+    </div>
+  </section>
+</main>
+<script src="/static/merge.js"></script>
+</body>
+</html>
