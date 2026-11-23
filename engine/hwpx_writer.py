@@ -247,10 +247,11 @@ def apply_meta(prefix: str, meta: dict | None) -> str:
     rep = {
         "dept": ("<hp:t>교육과정과</hp:t>", "<hp:t>{}</hp:t>"),
         "team": ("<hp:t> 전공교육팀</hp:t>", "<hp:t> {}</hp:t>"),
-        "leader": ("<hp:t>(팀장: 서자희)</hp:t>", "<hp:t>(팀장: {})</hp:t>"),
+        "leader": ("<hp:t>(팀장: 홍길동)</hp:t>", "<hp:t>(팀장: {})</hp:t>"),
     }
     for k, (old, new) in rep.items():
-        if meta.get(k):
+        # 팀장 이름은 비워 두면 문서에도 빈 칸으로 둔다(서식의 예시 이름이 남지 않게)
+        if meta.get(k) or k == "leader":
             prefix = prefix.replace(old, new.format(escape(meta[k])), 1)
     return prefix
 

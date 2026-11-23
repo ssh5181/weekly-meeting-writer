@@ -73,8 +73,8 @@ def health():
 
 @app.get("/api/defaults")
 def defaults():
-    """템플릿에 들어 있는 기본 부서/팀/팀장 값."""
-    return {"dept": "교육과정과", "team": "전공교육팀", "leader": "서자희"}
+    """기본 부서/팀 값. 팀장 이름은 개인정보라 기본값을 두지 않는다."""
+    return {"dept": "교육과정과", "team": "전공교육팀", "leader": ""}
 
 
 @app.post("/api/parse")
