@@ -37,14 +37,14 @@ uvicorn app.main:app --port 8000
 
 명령줄 변환만 할 때: `python convert.py 초안.md 결과.hwpx`
 
-## 팀원용 배포 (Render 무료)
+## 팀원용 배포 (Vercel)
 
-1. [Render](https://render.com) 에 GitHub 계정으로 로그인합니다.
-2. **New → Blueprint** 를 누르고 이 저장소를 고르면 `render.yaml` 설정대로 웹 서비스가 만들어집니다.
-3. `APP_PASSWORD` 값을 물으면 팀 공용 비밀번호를 넣습니다. 접속할 때 브라우저가 비밀번호를 묻고, 사용자 이름은 아무거나 넣으면 됩니다.
-4. 배포가 끝나면 `https://weekly-meeting-writer-xxxx.onrender.com` 같은 주소가 나오고, 이 주소를 팀원에게 공유하면 됩니다.
+이 저장소는 Vercel 서버리스(Python)로 배포됩니다. `api/index.py` 가 FastAPI 앱을 열고, `vercel.json` 이 모든 주소를 그 앱으로 넘깁니다.
 
-무료 요금제는 15분 동안 접속이 없으면 잠들어서, 다음 첫 접속은 30초~1분 정도 걸립니다.
+1. [Vercel](https://vercel.com) 에서 **Add New → Project** 로 이 저장소를 가져옵니다. 설정은 기본값 그대로 두면 됩니다.
+2. (선택) **Settings → Environment Variables** 에 `APP_PASSWORD` 를 넣으면 접속할 때 팀 공용 비밀번호를 묻습니다. 사용자 이름은 아무거나 넣으면 됩니다.
+3. `main` 브랜치에 올라가는 변경은 자동으로 다시 배포됩니다.
+
 올린 초안과 만든 파일은 서버에 저장하지 않습니다.
 
 ## 구조
@@ -52,6 +52,7 @@ uvicorn app.main:app --port 8000
 - `engine/md_parser.py`: MD → 안건 구조(JSON)
 - `engine/hwpx_writer.py`: 템플릿 머리 영역(부서·팀·공지사항·쪽번호)을 유지하고 본문을 템플릿 스타일로 생성
 - `engine/styles_extra.xml`: 템플릿에 없는 표 머리행·합계행·참고·성과지표 스타일
+- `api/index.py`, `vercel.json`: Vercel 배포 진입점과 설정
 - `app/main.py`: 웹 서버 (`POST /api/parse`, `POST /api/build`)
 - `app/static/`: 업로드·미리보기·편집 화면
 - `templates/weekly_template.hwpx`: 주간회의 서식
