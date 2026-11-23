@@ -166,7 +166,7 @@ def _table_para(item: dict, sid: dict, table_bf: str = "36") -> str:
         _cell(h, c, 0, widths[c], HEADER_ROW_H, sid["bf_head"], sid["pp_cell_center"], sid["cp_cell_bold"], header=True)
         for c, h in enumerate(header)) + "</hp:tr>")
     for r, row in enumerate(rows, 1):
-        is_total = row and row[0].replace(" ", "") in [w.replace(" ", "") for w in TOTAL_WORDS]
+        is_total = bool(row) and row[0].replace("**", "").replace(" ", "") in [w.replace(" ", "") for w in TOTAL_WORDS]
         bf = sid["bf_total"] if is_total else table_bf
         cp = sid["cp_cell_bold"] if is_total else sid["cp_cell"]
         trs.append("<hp:tr>" + "".join(
@@ -231,8 +231,12 @@ def build_body(data: dict, sid: dict) -> tuple[str, list[str]]:
             kpi = a["kpi"].strip()
             if not kpi.startswith("※"):
                 kpi = "※ " + kpi
-            out.append(_para(sid["pp_note"], "0", _run(sid["cp_kpi"], kpi)))
+            out.append(_para(sid["pp_note"], "0", _rich_runs(kpi, sid["cp_kpi"], sid["cp_kpi"])))
             plain.append(kpi)
+        for note in a.get("kpi_notes") or []:
+            if note.strip():
+                out.append(_para(sid["pp_note"], "0", _rich_runs(note.strip(), sid["cp_note"], sid["cp_note"])))
+                plain.append(note)
     return "".join(out), plain
 
 
