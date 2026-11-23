@@ -123,6 +123,21 @@ def _promote_plain_headings(agendas: list[dict]) -> None:
                 it.pop("dot", None)
 
 
+def _promote_parent_bullets(agendas: list[dict]) -> None:
+    """'- 소제목' 아래에 들여쓴 '- 내용' 이 오는 2단 목록이면, 바깥 단계를 중항목(가. 나.)으로 올린다."""
+    for a in agendas:
+        for sec in a["sections"]:
+            items = [it for it in sec["items"] if it["type"] != "note"]
+            nested = any(
+                x["type"] == "bullet" and x.get("lvl") == 0 and y["type"] == "bullet" and y.get("lvl") == 1
+                for x, y in zip(items, items[1:])
+            )
+            for it in sec["items"]:
+                if nested and it["type"] == "bullet" and it.get("lvl") == 0:
+                    it["type"] = "heading"
+                it.pop("lvl", None)
+
+
 def _new_agenda(title_raw: str) -> dict:
     a = parse_title(title_raw)
     a["sections"] = []
@@ -339,19 +354,20 @@ def parse_markdown(md: str) -> dict:
             elif re.match(r"^\*\*[^*].*?\*\*", body):
                 add_item({"type": "heading", "text": body.replace("**", "").strip()})
             else:
-                add_item({"type": "bullet", "text": body})
+                add_item({"type": "bullet", "text": body, "lvl": 0})
             continue
 
         # - 세부항목
         m = re.match(r"^[-–·∙]\s*(.*)$", s)
         if m:
-            add_item({"type": "bullet", "text": m.group(1).strip(), "dot": s[0] in "·∙"})
+            add_item({"type": "bullet", "text": m.group(1).strip(), "dot": s[0] in "·∙", "lvl": 1 if indent else 0})
             continue
 
         # 그 외 일반 문장
         add_item({"type": "text", "text": s})
 
     _promote_plain_headings(agendas)
+    _promote_parent_bullets(agendas)
     _number_headings(agendas)
     # 번호 채우기
     for idx, a in enumerate(agendas, 1):
