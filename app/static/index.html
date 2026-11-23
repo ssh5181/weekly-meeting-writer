@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>주간회의 작성기</title>
+<link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+<header class="topbar">
+  <h1>주간회의 작성기</h1>
+  <div class="topbar-actions">
+    <input id="filename" type="text" aria-label="파일 이름" placeholder="파일 이름">
+    <button id="btn-download" class="primary" disabled>hwpx 다운로드</button>
+  </div>
+</header>
+
+<main class="layout">
+  <aside class="panel">
+    <section>
+      <h2>1. 초안 올리기</h2>
+      <label id="dropzone" class="dropzone" tabindex="0">
+        <input id="file" type="file" accept=".md,.markdown,.txt,text/markdown,text/plain" hidden>
+        <strong>MD 파일을 끌어다 놓거나 클릭해서 선택</strong>
+        <span>AI와 대화해서 만든 주간회의 초안(.md)</span>
+      </label>
+      <details id="paste-box">
+        <summary>또는 내용 붙여넣기</summary>
+        <textarea id="md-input" rows="10" placeholder="여기에 MD 초안을 붙여넣으세요"></textarea>
+        <button id="btn-parse">불러오기</button>
+      </details>
+      <p id="status" class="status" role="status"></p>
+    </section>
+
+    <section>
+      <h2>2. 머리 정보</h2>
+      <label class="field">부서명 <input id="meta-dept" type="text"></label>
+      <label class="field">팀명 <input id="meta-team" type="text"></label>
+      <label class="field">팀장 <input id="meta-leader" type="text"></label>
+    </section>
+
+    <section class="help">
+      <h2>3. 미리보기에서 고치기</h2>
+      <ul>
+        <li>글자를 클릭하면 바로 고칠 수 있어요. <kbd>Ctrl</kbd>+<kbd>B</kbd> 로 굵게.</li>
+        <li>줄에 마우스를 올리면 위·아래 이동, 삭제, 아래에 추가 버튼이 나와요.</li>
+        <li>표는 칸을 클릭해서 고치고, 표 아래 버튼으로 행을 늘리거나 줄여요.</li>
+      </ul>
+    </section>
+  </aside>
+
+  <section class="preview-wrap">
+    <div id="empty" class="empty">
+      <p>초안을 올리면 여기에 주간회의 서식으로 미리보기가 나타나요.</p>
+      <button id="btn-sample" class="ghost">샘플 초안으로 보기</button>
+    </div>
+    <article id="paper" class="paper" hidden>
+      <div class="doc-head">
+        <div class="dept-row"><span class="dept-no">1</span><span class="dept-name" id="pv-dept"></span></div>
+        <div class="team-row"><span class="team-box"><span id="pv-team"></span><small>(팀장: <span id="pv-leader"></span>)</small></span></div>
+        <div class="notice">공지사항</div>
+      </div>
+      <div id="agendas"></div>
+      <div class="add-agenda"><button id="btn-add-agenda" class="ghost">+ 안건 추가</button></div>
+    </article>
+  </section>
+</main>
+
+<template id="tpl-item-tools">
+  <span class="tools" contenteditable="false">
+    <button data-act="up" title="위로">▲</button>
+    <button data-act="down" title="아래로">▼</button>
+    <select data-act="add" title="아래에 추가">
+      <option value="">+ 추가</option>
+      <option value="heading">가. 중항목</option>
+      <option value="bullet">- 세부항목</option>
+      <option value="note">* 참고</option>
+      <option value="text">일반 문장</option>
+      <option value="table">표</option>
+    </select>
+    <select data-act="type" title="종류 바꾸기">
+      <option value="">종류</option>
+      <option value="heading">가. 중항목</option>
+      <option value="bullet">- 세부항목</option>
+      <option value="note">* 참고</option>
+      <option value="text">일반 문장</option>
+    </select>
+    <button data-act="del" title="삭제">✕</button>
+  </span>
+</template>
+
+<script src="/static/app.js"></script>
+</body>
+</html>
