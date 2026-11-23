@@ -52,3 +52,48 @@ def test_build_package():
     sec = z.read("Contents/section0.xml").decode()
     assert sec.count("<hp:tbl") >= 3 + 2  # 머리 표 3개 + 본문 표 2개
     assert "교육과정과" in sec
+
+
+def test_section_bullets_share_left_margin():
+    """'목적'과 '주요내용'·'추진일정' 대항목의 ◦ 시작 위치(왼쪽 여백)가 같아야 한다."""
+    import re
+    import zipfile
+    h = zipfile.ZipFile(ROOT / "templates" / "weekly_template.hwpx").read("Contents/header.xml").decode()
+
+    def left(pid):
+        m = re.search(rf'<hh:paraPr id="{pid}".*?</hh:paraPr>', h, re.S).group(0)
+        return re.findall(r'<hc:left value="(-?\d+)"', m)
+
+    assert left("171") == left("172") == left("174")
+
+
+def test_two_level_dash_list_becomes_headings():
+    from engine.md_parser import parse_markdown
+    md = (
+        "### ① \\[육성\\] 예시 사업(담당자: 홍길동)\n○ **목적**: 예시\n○ **주요내용**\n"
+        "- **시스템명**: 「예시 생성기」\n- 접속 주소: example.app\n- **주요기능**\n"
+        "  - 입장 코드 인증\n  - 6단계 표준 입력\n○ **추진일정**\n- 테스트: '26. 11. 25.\n"
+    )
+    secs = parse_markdown(md)["agendas"][0]["sections"]
+    main = [(i["type"], i["text"]) for i in secs[1]["items"]]
+    assert main[0] == ("heading", "가. **시스템명**: 「예시 생성기」")
+    assert main[2] == ("heading", "다. **주요기능**")
+    assert main[3] == ("bullet", "입장 코드 인증")
+    assert secs[2]["items"][0]["type"] == "bullet"  # 1단 목록은 그대로
+    assert all("lvl" not in i for s in secs for i in s["items"])
+
+
+def test_kpi_uses_thick_arrow():
+    """성과지표 줄은 '※' 대신 굵은 화살표(➡)로 시작하고, 각주 표시(*)는 따로 강조한다."""
+    import io
+    import re
+    import zipfile
+    from engine.hwpx_writer import build_hwpx
+    from engine.md_parser import parse_markdown
+    md = ("### ① \\[육성\\] 예시 사업(담당자: 홍길동)\n○ **목적**: 예시\n"
+          "➡ **\\[국립대학육성사업 성과지표 목표\\]** 교과목 개발 건수 20개\\*/18개\n")
+    sec = zipfile.ZipFile(io.BytesIO(build_hwpx(parse_markdown(md)))).read("Contents/section0.xml").decode()
+    p = re.search(r"<hp:p\b[^>]*>(?:(?!</hp:p>).)*성과지표(?:(?!</hp:p>).)*</hp:p>", sec, re.S).group(0)
+    assert "<hp:t> ➡<hp:fwSpace/><hp:fwSpace/></hp:t>" in p
+    assert "※" not in p
+    assert re.search(r"<hp:t>\*</hp:t>", p)
