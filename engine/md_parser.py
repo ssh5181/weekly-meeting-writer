@@ -104,6 +104,25 @@ def _parse_table(lines: list[str]) -> dict:
     return {"type": "table", "header": header, "rows": rows, "align": align}
 
 
+def _parse_tsv(lines: list[str]) -> dict:
+    rows = [[c.strip() for c in l.split("\t")] for l in lines]
+    n = max(len(r) for r in rows)
+    rows = [(r + [""] * n)[:n] for r in rows]
+    return {"type": "table", "header": rows[0], "rows": rows[1:], "align": ["center"] * n}
+
+
+def _promote_plain_headings(agendas: list[dict]) -> None:
+    """기호 없이 쓴 줄 바로 아래에 '·' 세부항목이 오면, 그 줄을 중항목으로 본다(화면에서 복사한 초안)."""
+    for a in agendas:
+        for sec in a["sections"]:
+            items = sec["items"]
+            for k, it in enumerate(items[:-1]):
+                if it["type"] == "text" and items[k + 1]["type"] == "bullet" and items[k + 1].get("dot"):
+                    it["type"] = "heading"
+            for it in items:
+                it.pop("dot", None)
+
+
 def _new_agenda(title_raw: str) -> dict:
     a = parse_title(title_raw)
     a["sections"] = []
@@ -219,6 +238,16 @@ def parse_markdown(md: str) -> dict:
             add_item({"type": "note", "text": s})
             continue
 
+        # 화면에서 복사한 표(칸이 탭으로 구분됨)
+        if "\t" in line.strip():
+            block = [line.strip()]
+            while i < len(raw_lines) and "\t" in raw_lines[i].strip():
+                block.append(raw_lines[i].strip())
+                i += 1
+            if started:
+                add_item(_parse_tsv(block))
+            continue
+
         # 표
         if s.startswith("|"):
             block = [s]
@@ -256,6 +285,11 @@ def parse_markdown(md: str) -> dict:
         if not started:
             if s[:1] in CIRCLED and "[" in s:
                 new_agenda(s)
+            continue
+
+        # '② [육성] ...' 처럼 # 없이 쓴 다음 안건 제목
+        if s[:1] in CIRCLED and re.match(r"^.\s*\[[^\]]+\]", s):
+            new_agenda(s)
             continue
 
         # ○ 대항목
@@ -311,12 +345,13 @@ def parse_markdown(md: str) -> dict:
         # - 세부항목
         m = re.match(r"^[-–·∙]\s*(.*)$", s)
         if m:
-            add_item({"type": "bullet", "text": m.group(1).strip()})
+            add_item({"type": "bullet", "text": m.group(1).strip(), "dot": s[0] in "·∙"})
             continue
 
         # 그 외 일반 문장
         add_item({"type": "text", "text": s})
 
+    _promote_plain_headings(agendas)
     _number_headings(agendas)
     # 번호 채우기
     for idx, a in enumerate(agendas, 1):
