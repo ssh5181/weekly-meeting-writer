@@ -66,7 +66,8 @@ class BuildRequest(BaseModel):
 
 @app.get("/api/health")
 def health():
-    return {"ok": True}
+    """서버와 템플릿 파일이 준비됐는지 확인한다(배포 점검용)."""
+    return {"ok": True, "template": DEFAULT_TEMPLATE.is_file()}
 
 
 @app.get("/api/defaults")
